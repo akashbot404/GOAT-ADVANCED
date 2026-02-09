@@ -60,7 +60,7 @@ const getNetwork = () => {
         }
       });
     }
-    return total;
+  return total;
   } catch {
     return 3;
   }
@@ -86,8 +86,8 @@ module.exports = {
   config: {
     name: "up",
     aliases: ["uptime", "status", "sysinfo"],
-    version: "2.3",
-    author: "𝙼𝙾𝙷𝙰𝙼𝙼𝙰𝙳 𝙰𝙺𝙰𝚂𝙷",
+    version: "2.8",
+    author: "MOHAMMAD AKASH",
     role: 0,
     category: "system",
     shortDescription: "Display system status in hacker terminal style"
@@ -111,7 +111,7 @@ module.exports = {
       const hostname = os.hostname();
       const load = Math.min(parseFloat(os.loadavg()[0].toFixed(2)), 9.99);
 
-      // Uptime calculation
+      // Bot Uptime calculation
       const sec = process.uptime();
       const d = Math.floor(sec / 86400);
       const h = Math.floor((sec % 86400) / 3600);
@@ -122,7 +122,7 @@ module.exports = {
       const ping = Math.min(Date.now() - start, 9999);
 
       /* ===== TERMINAL STYLE CANVAS ===== */
-      const W = 1400, H = 850;
+      const W = 1800, H = 1100;
       const cv = createCanvas(W, H);
       const c = cv.getContext("2d");
 
@@ -134,115 +134,175 @@ module.exports = {
       c.fillRect(0, 0, W, H);
 
       // Terminal scanlines effect
-      for (let i = 0; i < H; i += 3) {
-        c.fillStyle = i % 6 === 0 ? "rgba(0, 255, 100, 0.05)" : "rgba(0, 200, 80, 0.02)";
+      for (let i = 0; i < H; i += 4) {
+        c.fillStyle = i % 8 === 0 ? "rgba(0, 255, 100, 0.05)" : "rgba(0, 200, 80, 0.02)";
         c.fillRect(0, i, W, 1);
       }
 
-      // Terminal header with glitch effect
-      c.font = "bold 56px 'Hacker'";
+      // ========== HEADER SECTION ==========
+      c.font = "bold 85px 'Hacker'";
       c.fillStyle = "#00ff41";
       c.textAlign = "center";
       
       // Glitch effect
       c.fillStyle = "#ff0041";
-      c.fillText("█▓▒░ SYSTEM TERMINAL ░▒▓█", W/2 + 2, 82);
+      c.fillText("█▓▒░ SYSTEM TERMINAL ░▒▓█", W/2 + 3, 125);
       c.fillStyle = "#0041ff";
-      c.fillText("█▓▒░ SYSTEM TERMINAL ░▒▓█", W/2 - 2, 78);
+      c.fillText("█▓▒░ SYSTEM TERMINAL ░▒▓█", W/2 - 3, 120);
       c.fillStyle = "#00ff41";
-      c.fillText("█▓▒░ SYSTEM TERMINAL ░▒▓█", W/2, 80);
+      c.fillText("█▓▒░ SYSTEM TERMINAL ░▒▓█", W/2, 123);
 
       // Subtitle
-      c.font = "24px 'Hacker'";
+      c.font = "38px 'Hacker'";
       c.fillStyle = "#00cc33";
-      c.fillText(">>> REAL-TIME SYSTEM MONITOR v2.3 <<<", W/2, 125);
+      c.fillText(">>> REAL-TIME SYSTEM MONITOR v2.8 <<<", W/2, 185);
 
       // Connection info
-      c.font = "18px 'Hacker'";
+      c.font = "28px 'Hacker'";
       c.fillStyle = "#008833";
+      
+      // Left aligned - CONNECTED TO
       c.textAlign = "left";
-      c.fillText(`CONNECTED TO: ${hostname.substring(0, 20)}`, 50, 155);
+      c.fillText(`CONNECTED TO: ${hostname.substring(0, 20)}`, 100, 240);
+      
+      // Right aligned - SESSION ID
       c.textAlign = "right";
-      c.fillText(`SESSION: ${Date.now().toString(16).toUpperCase().substring(0, 12)}`, W - 50, 155);
+      c.fillText(`SESSION: ${Date.now().toString(16).toUpperCase().substring(0, 12)}`, W - 100, 240);
 
-      // Main content area with border
+      // Main border
       c.strokeStyle = "#00ff41";
-      c.lineWidth = 2;
-      c.strokeRect(40, 170, W - 80, H - 250);
+      c.lineWidth = 3;
+      c.strokeRect(80, 280, W - 160, H - 400);
 
-      // Left panel - System Info
-      c.font = "bold 36px 'Hacker'";
+      // Vertical separator line
+      c.strokeStyle = "#00ff41";
+      c.lineWidth = 1;
+      c.setLineDash([5, 3]);
+      c.beginPath();
+      c.moveTo(W/2, 300);
+      c.lineTo(W/2, H - 380);
+      c.stroke();
+      c.setLineDash([]);
+
+      // ========== LEFT PANEL - SYSTEM SPECS ==========
+      const leftPanelX = 120;
+      const leftPanelStartY = 340;
+      
+      c.font = "bold 48px 'Hacker'";
       c.fillStyle = "#00ff88";
       c.textAlign = "left";
-      c.fillText("> SYSTEM SPECIFICATIONS", 60, 220);
+      c.fillText("> SYSTEM SPECIFICATIONS", leftPanelX, leftPanelStartY);
 
       const sysInfo = [
-        `OS: ${platform.substring(0, 10)} ${arch}`,
-        `CPU CORES: ${threads} @ ${os.cpus()[0].model.split('@')[0].substring(0, 30)}`,
+        `OS: ${platform} ${arch}`,
+        `CPU CORES: ${threads}`,
+        `CPU: ${os.cpus()[0].model.split('@')[0].substring(0, 30)}`,
         `NETWORK: ${network} ACTIVE INTERFACES`,
-        `NODE: ${process.version.substring(0, 15)}`,
+        `NODE: ${process.version.substring(0, 12)}`,
         `LOAD: ${load}`,
         `TEMP: ${temp}°C`
       ];
 
-      c.font = "28px 'Hacker'";
+      c.font = "34px 'Hacker'";
       c.fillStyle = "#00ee77";
-      const lineHeight = 45;
+      const leftLineHeight = 55;
+      const leftContentStartY = leftPanelStartY + 70;
+      
       sysInfo.forEach((info, i) => {
-        c.fillText(`◉ ${info}`, 80, 280 + (i * lineHeight));
+        c.fillText(`◉ ${info}`, leftPanelX + 20, leftContentStartY + (i * leftLineHeight));
       });
 
-      // Right panel - Live Metrics
-      c.font = "bold 36px 'Hacker'";
+      // ========== RIGHT PANEL - LIVE METRICS ==========
+      const rightPanelX = W/2 + 120;
+      const rightPanelStartY = 340;
+      
+      c.font = "bold 48px 'Hacker'";
       c.fillStyle = "#00ff88";
       c.textAlign = "left";
-      c.fillText("> LIVE METRICS", W/2 + 60, 220);
+      c.fillText("> LIVE METRICS", rightPanelX, rightPanelStartY);
 
-      // ASCII art bars
+      // Bars with PROPER spacing
       const drawTerminalBar = (x, y, value, label, color, symbol = "█") => {
-        c.font = "26px 'Hacker'";
+        c.font = "32px 'Hacker'";
         c.fillStyle = "#00cc66";
         c.fillText(label, x, y);
         
         c.fillStyle = "#002200";
-        c.fillRect(x, y + 15, 400, 30);
+        c.fillRect(x, y + 25, 450, 40);
         
-        const fillWidth = (value / 100) * 400;
+        const fillWidth = (value / 100) * 450;
         const barGradient = c.createLinearGradient(x, 0, x + fillWidth, 0);
         barGradient.addColorStop(0, color);
         barGradient.addColorStop(1, color + "cc");
         c.fillStyle = barGradient;
-        c.fillRect(x, y + 15, fillWidth, 30);
+        c.fillRect(x, y + 25, fillWidth, 40);
         
         c.strokeStyle = "#00ff41";
-        c.lineWidth = 1;
-        c.strokeRect(x, y + 15, 400, 30);
+        c.lineWidth = 2;
+        c.strokeRect(x, y + 25, 450, 40);
         
-        c.font = "bold 24px 'Hacker'";
+        c.font = "bold 28px 'Hacker'";
         c.fillStyle = "#ffffff";
         c.textAlign = "right";
         const symbols = symbol.repeat(Math.floor(value/20));
-        c.fillText(`${value}% ${symbols.substring(0, 5)}`, x + 395, y + 40);
+        c.fillText(`${value}% ${symbols.substring(0, 5)}`, x + 445, y + 55);
         c.textAlign = "left";
       };
 
-      drawTerminalBar(W/2 + 60, 280, cpu, "CPU LOAD", "#00ff41", "■");
-      drawTerminalBar(W/2 + 60, 350, ram, "MEMORY USAGE", "#00ccff", "▣");
-      drawTerminalBar(W/2 + 60, 420, disk, "STORAGE USAGE", "#ff00ff", "◼");
+      // Position bars with EXACT spacing
+      const rightContentStartY = rightPanelStartY + 70;
+      drawTerminalBar(rightPanelX, rightContentStartY, cpu, "CPU LOAD", "#00ff41", "■");
+      drawTerminalBar(rightPanelX, rightContentStartY + 90, ram, "MEMORY USAGE", "#00ccff", "▣");
+      drawTerminalBar(rightPanelX, rightContentStartY + 180, disk, "STORAGE USAGE", "#ff00ff", "◼");
 
-      // Status indicators
-      c.font = "bold 32px 'Hacker'";
+      // ========== HORIZONTAL SEPARATOR ==========
+      c.strokeStyle = "#00ff41";
+      c.lineWidth = 2;
+      c.setLineDash([10, 5]);
+      c.beginPath();
+      c.moveTo(100, 750);
+      c.lineTo(W - 100, 750);
+      c.stroke();
+      c.setLineDash([]);
+
+      // ========== BOT UPTIME - FIXED TEXT ==========
+      c.font = "bold 52px 'Hacker'";
       c.fillStyle = "#ffff00";
       c.textAlign = "left";
-      c.fillText("⌛ SYSTEM UPTIME:", 60, 550);
       
-      c.font = "30px 'Hacker'";
+      // FIXED: বানান ঠিক করা
+      const uptimeLabel = "⏱️ BOT UPTIME:";
+      c.fillText(uptimeLabel, 120, 830);
+      
+      // Calculate uptime text position
+      const uptimeLabelWidth = c.measureText(uptimeLabel).width;
+      const uptimeX = 120 + uptimeLabelWidth + 30;
+      const uptimeY = 830;
+      
+      // Background highlight box
+      c.fillStyle = "rgba(0, 255, 255, 0.2)";
+      const uptimeText = `[ ${uptime} ]`;
+      const uptimeTextWidth = c.measureText(uptimeText).width;
+      c.fillRect(uptimeX - 15, uptimeY - 45, uptimeTextWidth + 30, 80);
+      
+      // Border around uptime
+      const blink = Math.floor(Date.now() / 500) % 2;
+      c.strokeStyle = blink ? "#ff0000" : "#00ff00";
+      c.lineWidth = 3;
+      c.strokeRect(uptimeX - 20, uptimeY - 50, uptimeTextWidth + 40, 90);
+      
+      // Uptime text - FIXED
+      c.font = "bold 60px 'Hacker'";
       c.fillStyle = "#00ffff";
-      c.fillText(`[ ${uptime} ]`, 400, 550);
+      c.fillText(uptimeText, uptimeX, uptimeY);
 
-      c.font = "bold 32px 'Hacker'";
+      // ========== RESPONSE TIME - FIXED TEXT ==========
+      c.font = "bold 52px 'Hacker'";
       c.fillStyle = "#ffff00";
-      c.fillText("📡 RESPONSE TIME:", 60, 610);
+      
+      // FIXED: বানান ঠিক করা
+      const responseLabel = "📡 RESPONSE TIME:";
+      c.fillText(responseLabel, 120, 930);
       
       let pingColor = "#00ff00";
       let pingStatus = "EXCELLENT";
@@ -259,77 +319,65 @@ module.exports = {
         pingStatus = "POOR";
       }
       
-      c.font = "30px 'Hacker'";
-      c.fillStyle = pingColor;
-      c.fillText(`[ ${ping}ms | ${pingStatus} ]`, 430, 610);
-
-      // Process info
-      c.font = "bold 32px 'Hacker'";
-      c.fillStyle = "#ffff00";
-      c.fillText("🖥️  ACTIVE PROCESSES:", 60, 670);
+      // Calculate response time position
+      const responseLabelWidth = c.measureText(responseLabel).width;
+      const responseX = 120 + responseLabelWidth + 30;
+      const responseY = 930;
       
-      c.font = "28px 'Hacker'";
-      c.fillStyle = "#ff55ff";
-      const moduleCount = Math.min(Object.keys(global).length, 999);
-      c.fillText(`${moduleCount} MODULES LOADED`, 480, 670);
+      // Response time text
+      const responseText = `[ ${ping}ms | ${pingStatus} ]`;
+      c.font = "48px 'Hacker'";
+      c.fillStyle = pingColor;
+      c.fillText(responseText, responseX, responseY);
 
-      // Horizontal separator line
+      // ========== STATUS FOOTER ==========
+      // Horizontal line
       c.strokeStyle = "#00ff41";
       c.lineWidth = 1;
       c.setLineDash([5, 3]);
       c.beginPath();
-      c.moveTo(60, 720);
-      c.lineTo(W - 60, 720);
+      c.moveTo(100, 990);
+      c.lineTo(W - 100, 990);
       c.stroke();
       c.setLineDash([]);
 
-      // Terminal footer
-      c.font = "22px 'Hacker'";
-      c.fillStyle = "#00ff41";
-      c.textAlign = "center";
-      
-      const blink = Math.floor(Date.now() / 500) % 2 === 0;
-      c.fillText(blink ? "▋" : "_", W/2, H - 70);
-
-      // Status message
+      // Status message - CENTERED
       const status = ping < 100 ? "OPTIMAL" : ping < 300 ? "STABLE" : "LAG DETECTED";
       const statusColor = ping < 100 ? "#00ff00" : ping < 300 ? "#ffff00" : "#ff0000";
       
-      c.font = "bold 30px 'Hacker'";
+      c.font = "bold 42px 'Hacker'";
       c.fillStyle = statusColor;
-      c.fillText(`<<< SYSTEM STATUS: ${status} >>>`, W/2, H - 120);
+      c.textAlign = "center";
+      c.fillText(`<<< SYSTEM STATUS: ${status} >>>`, W/2, 1050);
+
+      // Cursor blink
+      const cursorBlink = Math.floor(Date.now() / 500) % 2;
+      c.fillText(cursorBlink ? "▋" : "_", W/2, 1090);
 
       // Bottom hex stream
-      c.font = "20px 'Hacker'";
+      c.font = "26px 'Hacker'";
       c.fillStyle = "#008833";
-      for (let i = 0; i < W; i += 180) {
+      const hexCount = 8;
+      const hexSpacing = (W - 200) / hexCount;
+      for (let i = 0; i < hexCount; i++) {
         const hex = Math.random().toString(16).substr(2, 6).toUpperCase();
-        c.fillText(`0x${hex}`, i + 40, H - 40);
-      }
-
-      // Binary rain in background
-      c.font = "18px 'Hacker'";
-      for (let i = 0; i < 60; i++) {
-        const x = Math.random() * W;
-        const y = Math.random() * H;
-        const binary = Math.random() > 0.5 ? "1" : "0";
-        const alpha = Math.random() * 0.2 + 0.05;
-        c.fillStyle = `rgba(0, 255, 100, ${alpha})`;
-        c.fillText(binary, x, y);
+        c.fillText(`0x${hex}`, 100 + (i * hexSpacing), H - 30);
       }
 
       // Save image
       const timestamp = Date.now();
       const file = path.join(__dirname, "cache", `terminal_${timestamp}.png`);
       fs.mkdirSync(path.dirname(file), { recursive: true });
-      fs.writeFileSync(file, cv.toBuffer());
+      
+      const buffer = cv.toBuffer('image/png');
+      fs.writeFileSync(file, buffer);
 
-      // Send ONLY the image attachment WITHOUT any message body
+      // Send image
       await message.reply({
         attachment: fs.createReadStream(file)
       });
 
-      // Auto-cleanup
+      // Cleanup
       setTimeout(() => {
         if (fs.existsSync(file)) {
           fs.unlinkSync(file);
@@ -338,7 +386,6 @@ module.exports = {
 
     } catch (error) {
       console.error("TERMINAL ERROR:", error);
-      // Send error message without ASCII art box
       message.reply("❌ System terminal failed to generate.");
     }
   },
