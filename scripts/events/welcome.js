@@ -1,10 +1,14 @@
 const { getTime, drive } = global.utils;
-const { nickNameBot } = global.GoatBot.config; // ⬅️ এটুকু যুক্ত করো উপরে
+const { nickNameBot } = global.GoatBot.config;
+const { createCanvas, loadImage, registerFont } = require("canvas");
+const fs = require("fs-extra");
+const path = require("path");
+const axios = require("axios");
 
 module.exports = {
   config: {
     name: "welcome",
-    version: "2.3",
+    version: "4.6",
     author: "Mohammad AkasH",
     category: "events"
   },
@@ -15,8 +19,7 @@ module.exports = {
       session2: "noon",
       session3: "afternoon",
       session4: "evening",
-      defaultWelcomeMessage:
-        "__Assalamu Alaikum__\n═══════════════\n__𝑾𝑬𝑳𝑪𝑶𝑴𝑬 ➤ {userName}__\n\n_ᴏɴ ᴏᴜʀ {threadName}_\n_ᴡᴇ ᴀʀᴇ ᴘʟᴇᴀsᴇᴅ ᴛᴏ ᴡᴇʟᴄᴏᴍᴇ ʏᴏᴜ_\n       __!! ᴡᴇʟᴄᴏᴍᴇ !!__\n__'ʏᴏᴜ ᴀʀᴇ ᴛʜᴇ__\n        __{memberCount}ᴛʜ ᴍᴇᴍʙᴇʀ ᴏꜰ ᴛʜɪs ɢʀᴏᴜᴘ___!!\n\n___𝙰ᴅᴅᴇᴅ ʙʏ : {inviterName}___\n\n𝙱ᴏᴛ ᴏᴡɴᴇʀ : 𝙼ᴏʜᴀᴍᴍᴀᴅ 𝘼ᴋᴀꜱʜ",
+      defaultWelcomeMessage: "𝐖𝐄𝐋𝐂𝐎𝐌𝐄 {userTag}",
       botAddedMessage:
         "━━━━━━━━━━━━━━━━━━━\n🤖 ᴛʜᴀɴᴋ ʏᴏᴜ ғᴏʀ ᴀᴅᴅɪɴɢ ᴍᴇ ᴛᴏ ᴛʜᴇ ɢʀᴏᴜᴘ! 💖\n\n⚙️ ʙᴏᴛ ᴘʀᴇꜰɪx : /\n📜 ᴛʏᴘᴇ /help ᴛᴏ sᴇᴇ ᴀʟʟ ᴄᴏᴍᴍᴀɴᴅs\n\n✨ ʟᴇᴛ's ᴍᴀᴋᴇ ᴛʜɪs ɢʀᴏᴜᴘ ᴇᴠᴇɴ ᴍᴏʀᴇ ꜰᴜɴ ᴛᴏɢᴇᴛʜᴇʀ! 😄\n━━━━━━━━━━━━━━━━━━━"
     }
@@ -30,9 +33,9 @@ module.exports = {
     if (!threadData.settings.sendWelcomeMessage) return;
 
     const addedMembers = event.logMessageData.addedParticipants;
-    const hours = getTime("HH");
-    const threadName = threadData.threadName;
+    const threadName = threadData.threadName || "our group";
     const prefix = global.utils.getPrefix(threadID);
+    const inviterID = event.author;
 
     for (const user of addedMembers) {
       const userID = user.userFbId;
@@ -47,35 +50,74 @@ module.exports = {
 
       // ✅ যদি নতুন ইউজার হয়
       const userName = user.fullName;
-      const inviterName = await usersData.getName(event.author);
+      const userTag = `@${userName}`;
+      const inviterName = await usersData.getName(inviterID);
       const memberCount = event.participantIDs.length;
 
       let { welcomeMessage = getLang("defaultWelcomeMessage") } = threadData.data;
 
-      const session =
-        hours <= 10
-          ? getLang("session1")
-          : hours <= 12
-          ? getLang("session2")
-          : hours <= 18
-          ? getLang("session3")
-          : getLang("session4");
-
       welcomeMessage = welcomeMessage
         .replace(/\{userName\}/g, userName)
+        .replace(/\{userTag\}/g, userTag)
         .replace(/\{threadName\}/g, threadName)
         .replace(/\{memberCount\}/g, memberCount)
-        .replace(/\{inviterName\}/g, inviterName)
-        .replace(/\{session\}/g, session)
-        .replace(/\{time\}/g, hours);
+        .replace(/\{inviterName\}/g, inviterName);
+
+      // Welcome Image Card তৈরি
+      let welcomeImagePath;
+      try {
+        // নতুন ইউজার প্রোফাইল ইমেজ
+        let newUserProfileURL;
+        try {
+          const profilePic = await api.getUserInfo([userID]);
+          newUserProfileURL = profilePic[userID].thumbSrc;
+        } catch (error) {
+          newUserProfileURL = null;
+        }
+
+        // Inviter প্রোফাইল ইমেজ
+        let inviterProfileURL;
+        try {
+          const profilePic = await api.getUserInfo([inviterID]);
+          inviterProfileURL = profilePic[inviterID].thumbSrc;
+        } catch (error) {
+          inviterProfileURL = null;
+        }
+
+        // গ্রুপ প্রোফাইল ইমেজ
+        let groupProfileURL;
+        try {
+          const threadInfo = await api.getThreadInfo(threadID);
+          groupProfileURL = threadInfo.imageSrc;
+        } catch (error) {
+          groupProfileURL = null;
+        }
+
+        welcomeImagePath = await createWelcomeCard({
+          userName,
+          userTag,
+          threadName,
+          memberCount,
+          inviterName,
+          newUserProfileURL,
+          inviterProfileURL,
+          groupProfileURL
+        });
+      } catch (err) {
+        console.error("Welcome image creation failed:", err);
+        welcomeImagePath = null;
+      }
 
       const form = {
         body: welcomeMessage,
         mentions: [{ tag: userName, id: userID }]
       };
 
-      // ✅ অ্যাটাচমেন্ট থাকলে
-      if (threadData.data.welcomeAttachment) {
+      // ✅ Welcome Image Card অ্যাটাচ
+      if (welcomeImagePath && fs.existsSync(welcomeImagePath)) {
+        form.attachment = fs.createReadStream(welcomeImagePath);
+      } else if (threadData.data.welcomeAttachment) {
+        // পূর্বের অ্যাটাচমেন্ট সিস্টেম
         const files = threadData.data.welcomeAttachment;
         const attachments = files.reduce((acc, file) => {
           acc.push(drive.getFile(file, "stream"));
@@ -87,6 +129,350 @@ module.exports = {
       }
 
       message.send(form);
+      
+      // Temporary image file delete
+      if (welcomeImagePath && fs.existsSync(welcomeImagePath)) {
+        setTimeout(() => fs.unlinkSync(welcomeImagePath), 5000);
+      }
     }
   }
 };
+
+async function downloadImage(url) {
+  try {
+    const response = await axios({
+      method: 'GET',
+      url: url,
+      responseType: 'arraybuffer'
+    });
+    return Buffer.from(response.data, 'binary');
+  } catch (error) {
+    return null;
+  }
+}
+
+async function createWelcomeCard({ userName, userTag, threadName, memberCount, inviterName, newUserProfileURL, inviterProfileURL, groupProfileURL }) {
+  const width = 1200;
+  const height = 675;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+
+  // ✅ Elegant Dark Background
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, '#0c0c0c');
+  gradient.addColorStop(0.3, '#1a1a2e');
+  gradient.addColorStop(0.7, '#16213e');
+  gradient.addColorStop(1, '#0f3460');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+
+  // ✅ Background Pattern (Subtle)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.03)';
+  for (let i = 0; i < 100; i++) {
+    const x = Math.random() * width;
+    const y = Math.random() * height;
+    const size = Math.random() * 3 + 1;
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // ✅ Top decorative line
+  ctx.strokeStyle = 'rgba(255, 215, 0, 0.4)';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.moveTo(width * 0.1, 90);
+  ctx.lineTo(width * 0.9, 90);
+  ctx.stroke();
+
+  // ✅ Main Title - Welcome To
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 60px "Segoe UI", Arial';
+  ctx.textAlign = 'center';
+  ctx.shadowColor = 'rgba(255, 215, 0, 0.5)';
+  ctx.shadowBlur = 12;
+  ctx.fillText('Welcome To', width / 2, 160);
+  ctx.shadowBlur = 0;
+
+  // ✅ Top Section - User & Inviter Profiles
+  const topY = 250;
+  const profileSize = 70;
+  const leftX = width * 0.25;
+  const rightX = width * 0.75;
+
+  // ✅ Left Side - New User Section
+  // New User Profile Frame (Green)
+  ctx.beginPath();
+  ctx.arc(leftX, topY, profileSize + 8, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(46, 204, 113, 0.15)';
+  ctx.fill();
+  ctx.strokeStyle = '#2ecc71';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Load or create default new user profile
+  let newUserImage = null;
+  if (newUserProfileURL) {
+    try {
+      const imageBuffer = await downloadImage(newUserProfileURL);
+      if (imageBuffer) {
+        newUserImage = await loadImage(imageBuffer);
+      }
+    } catch (err) {}
+  }
+
+  if (newUserImage) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(leftX, topY, profileSize, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(newUserImage, leftX - profileSize, topY - profileSize, profileSize * 2, profileSize * 2);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#333344';
+    ctx.beginPath();
+    ctx.arc(leftX, topY, profileSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 45px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('👤', leftX, topY + 15);
+  }
+
+  // "NEW USER" Label
+  ctx.fillStyle = '#2ecc71';
+  ctx.font = 'bold 24px "Segoe UI", Arial';
+  ctx.fillText('NEW USER', leftX, topY + profileSize + 40);
+
+  // New User Name (with text wrapping if too long)
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 28px "Segoe UI", Arial';
+  
+  // Truncate long names
+  let displayName = userName;
+  const maxNameLength = 18;
+  if (userName.length > maxNameLength) {
+    displayName = userName.substring(0, maxNameLength) + '...';
+  }
+  ctx.fillText(displayName, leftX, topY + profileSize + 75);
+
+  // ✅ Right Side - Added By Section
+  // Added By Profile Frame (Blue)
+  ctx.beginPath();
+  ctx.arc(rightX, topY, profileSize + 8, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(52, 152, 219, 0.15)';
+  ctx.fill();
+  ctx.strokeStyle = '#3498db';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Load or create default inviter profile
+  let inviterImage = null;
+  if (inviterProfileURL) {
+    try {
+      const imageBuffer = await downloadImage(inviterProfileURL);
+      if (imageBuffer) {
+        inviterImage = await loadImage(imageBuffer);
+      }
+    } catch (err) {}
+  }
+
+  if (inviterImage) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(rightX, topY, profileSize, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(inviterImage, rightX - profileSize, topY - profileSize, profileSize * 2, profileSize * 2);
+    ctx.restore();
+  } else {
+    ctx.fillStyle = '#333344';
+    ctx.beginPath();
+    ctx.arc(rightX, topY, profileSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 45px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('👤', rightX, topY + 15);
+  }
+
+  // "ADDED BY" Label
+  ctx.fillStyle = '#3498db';
+  ctx.font = 'bold 24px "Segoe UI", Arial';
+  ctx.fillText('ADDED BY', rightX, topY + profileSize + 40);
+
+  // Added By Name (with text wrapping)
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 28px "Segoe UI", Arial';
+  
+  // Truncate long names
+  let displayInviterName = inviterName;
+  if (inviterName.length > maxNameLength) {
+    displayInviterName = inviterName.substring(0, maxNameLength) + '...';
+  }
+  ctx.fillText(displayInviterName, rightX, topY + profileSize + 75);
+
+  // ✅ Connecting Lines with Arrow
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([8, 4]);
+  
+  // Connecting line from New User to Added By
+  ctx.beginPath();
+  ctx.moveTo(leftX + profileSize + 10, topY);
+  ctx.lineTo(rightX - profileSize - 10, topY);
+  ctx.stroke();
+  
+  ctx.setLineDash([]);
+
+  // Arrow pointing from Added By side (indicating direction)
+  ctx.fillStyle = '#3498db';
+  ctx.beginPath();
+  ctx.moveTo(rightX - profileSize - 25, topY);
+  ctx.lineTo(rightX - profileSize - 40, topY - 10);
+  ctx.lineTo(rightX - profileSize - 40, topY + 10);
+  ctx.closePath();
+  ctx.fill();
+
+  // ✅ Middle Section - Group Info
+  const groupY = 420;
+  const centerX = width / 2;
+  const groupImageSize = 80;
+
+  // Group Image Frame
+  ctx.beginPath();
+  ctx.arc(centerX, groupY, groupImageSize + 10, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(0, 200, 255, 0.15)';
+  ctx.fill();
+  ctx.strokeStyle = '#00c8ff';
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  // Load or create default group image
+  let groupImage = null;
+  if (groupProfileURL) {
+    try {
+      const imageBuffer = await downloadImage(groupProfileURL);
+      if (imageBuffer) {
+        groupImage = await loadImage(imageBuffer);
+      }
+    } catch (err) {
+      console.log("Group image load failed:", err);
+    }
+  }
+
+  if (groupImage) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, groupY, groupImageSize, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.clip();
+    ctx.drawImage(groupImage, centerX - groupImageSize, groupY - groupImageSize, groupImageSize * 2, groupImageSize * 2);
+    ctx.restore();
+  } else {
+    // Default group icon
+    ctx.fillStyle = '#2d3436';
+    ctx.beginPath();
+    ctx.arc(centerX, groupY, groupImageSize, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 60px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('👥', centerX, groupY + 20);
+  }
+
+  // ✅ Group Name (Single Line with Auto Font Size Adjustment)
+  let displayGroupName = threadName;
+  const maxWidth = width * 0.8; // 80% of image width
+  
+  // Start with larger font size
+  let fontSize = 32;
+  let actualWidth;
+  
+  // Calculate text width and reduce font size if needed
+  do {
+    ctx.font = `bold ${fontSize}px "Segoe UI", Arial`;
+    actualWidth = ctx.measureText(displayGroupName).width;
+    if (actualWidth > maxWidth && fontSize > 20) {
+      fontSize -= 2;
+    } else {
+      break;
+    }
+  } while (actualWidth > maxWidth && fontSize > 20);
+  
+  // If still too long, truncate with ellipsis
+  if (actualWidth > maxWidth) {
+    let truncatedName = threadName;
+    while (ctx.measureText(truncatedName + '...').width > maxWidth && truncatedName.length > 1) {
+      truncatedName = truncatedName.substring(0, truncatedName.length - 1);
+    }
+    displayGroupName = truncatedName + '...';
+  }
+
+  // Draw group name
+  ctx.fillStyle = '#ffffff';
+  ctx.font = `bold ${fontSize}px "Segoe UI", Arial`;
+  ctx.fillText(displayGroupName, centerX, groupY + groupImageSize + 50);
+
+  // ✅ Member Count Section
+  const memberY = 560;
+  const boxWidth = 500;
+  const boxHeight = 50;
+  const boxX = (width - boxWidth) / 2;
+  const boxY = memberY;
+  
+  // Member Count Box Background
+  ctx.fillStyle = 'rgba(155, 89, 182, 0.2)';
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  
+  // Member Count Box Border
+  ctx.strokeStyle = '#9b59b6';
+  ctx.lineWidth = 3;
+  ctx.strokeRect(boxX, boxY, boxWidth, boxHeight);
+  
+  // Member Count Text (with ordinal suffix)
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 32px "Segoe UI", Arial';
+  
+  let suffix = "th";
+  if (memberCount % 10 === 1 && memberCount % 100 !== 11) suffix = "st";
+  else if (memberCount % 10 === 2 && memberCount % 100 !== 12) suffix = "nd";
+  else if (memberCount % 10 === 3 && memberCount % 100 !== 13) suffix = "rd";
+  
+  const memberText = `You are the ${memberCount}${suffix} Member`;
+  ctx.fillText(memberText, width / 2, boxY + 35);
+
+  // ✅ Separator Line between Group and Member Count
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(width * 0.2, memberY - 20);
+  ctx.lineTo(width * 0.8, memberY - 20);
+  ctx.stroke();
+
+  // ✅ Bottom decorative line
+  ctx.strokeStyle = 'rgba(255, 215, 0, 0.3)';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(width * 0.1, height - 40);
+  ctx.lineTo(width * 0.9, height - 40);
+  ctx.stroke();
+
+  // ✅ Footer Text
+  ctx.fillStyle = '#aaaaaa';
+  ctx.font = '20px "Segoe UI", Arial';
+  ctx.fillText('Enjoy your stay in our community!', width / 2, height - 15);
+
+  // ✅ Border
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(10, 10, width - 20, height - 20);
+
+  // ✅ Save image
+  const tempPath = path.join(__dirname, `temp_welcome_${Date.now()}.png`);
+  const buffer = canvas.toBuffer('image/png');
+  await fs.writeFile(tempPath, buffer);
+  
+  return tempPath;
+}
