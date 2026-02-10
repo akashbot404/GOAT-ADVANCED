@@ -3,7 +3,7 @@ const path = require("path");
 const { createCanvas, loadImage } = require('canvas');
 const axios = require('axios');
 
-const balanceFile = __dirname + "/coinxbalance.json";
+const balanceFile = __dirname + "/economy.json";
 
 if (!fs.existsSync(balanceFile)) {
   fs.writeFileSync(balanceFile, JSON.stringify({}, null, 2));
