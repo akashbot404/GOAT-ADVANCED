@@ -57,7 +57,7 @@ function parseAmount(str) {
 // === MODULE CONFIG ===
 module.exports.config = {
   name: "balance",
-  aliases: ["bal", "bet"],
+  aliases: ["bal"],
   version: "2.0",
   author: "MOHAMMAD AKASH",
   countDown: 5,
